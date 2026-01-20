@@ -1,10 +1,10 @@
 use rand::Rng;
-use rand::{SeedableRng, distr::StandardUniform};
+use rand::{distr::StandardUniform, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use rayon::prelude::*;
-use union_find_rs::prelude::*;
 
 use crate::norms::*;
+use crate::union_find::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Observables {
@@ -68,8 +68,6 @@ fn geometric_skip<R: Rng + ?Sized>(p: f64, rng: &mut R) -> usize {
     }
 }
 
-type Clusters = DisjointSets<usize>;
-
 /// 2D long-range percolation with skip-based sampling.
 /// Probability p_l = min(1, beta / l^(2 + alpha)).
 fn lr_percolation_2d<N: NormType, R: Rng + ?Sized>(
@@ -77,11 +75,9 @@ fn lr_percolation_2d<N: NormType, R: Rng + ?Sized>(
     alpha: f64,
     beta: f64,
     rng: &mut R,
-) -> Clusters {
-    let mut clusters = Clusters::with_capacity(l * l);
-    for i in 0..l * l {
-        clusters.make_set(i).unwrap();
-    }
+) -> UnionFind {
+    let mut clusters = UnionFind::new(l * l);
+
     for x in 0..l {
         for y in 0..l {
             if x == 0 && y == 0 {
@@ -108,13 +104,9 @@ fn lr_percolation_2d<N: NormType, R: Rng + ?Sized>(
 
                 let dx = (i / l + x) % l;
                 let dy = (i % l + y) % l;
-                clusters
-                    .union(
-                        &clusters.find_set(&i).unwrap(),
-                        &clusters.find_set(&(dx * l + dy)).unwrap(),
-                    )
-                    .unwrap();
-
+                let c1 = clusters.find(i);
+                let c2 = clusters.find(dx * l + dy);
+                clusters.union(c1, c2);
                 i = i.saturating_add(1);
             }
         }
@@ -123,11 +115,11 @@ fn lr_percolation_2d<N: NormType, R: Rng + ?Sized>(
 }
 
 impl Observables {
-    fn new(l: usize, clusters: Clusters) -> Self {
+    fn new(l: usize, clusters: UnionFind) -> Self {
         // To prevent overflow, f64 instead of an int
         let mut sum_power2: f64 = 0.0;
         let mut sum_power4: f64 = 0.0;
-        for size in clusters.into_iter().map(|c| c.len() as f64) {
+        for size in clusters.get_sets().map(|c| c.len() as f64) {
             sum_power2 += size.powi(2);
             sum_power4 += size.powi(4);
         }
@@ -175,7 +167,7 @@ mod tests {
 
         let clusters = lr_percolation_2d::<L1, _>(l, alpha, beta, &mut rng);
 
-        assert_eq!(clusters.into_iter().count(), 1);
+        assert_eq!(clusters.get_sets().count(), 1);
     }
 
     #[test]
@@ -188,7 +180,7 @@ mod tests {
 
         let clusters = lr_percolation_2d::<L1, _>(l, alpha, beta, &mut rng);
 
-        for c in clusters.into_iter() {
+        for c in clusters.get_sets() {
             assert_eq!(c.len(), 1);
         }
     }
@@ -204,7 +196,7 @@ mod tests {
         let clusters = lr_percolation_2d::<L1, _>(l, alpha, beta, &mut rng);
 
         // Sum of all cluster sizes should equal total grid size
-        let sum_sizes: usize = clusters.into_iter().map(|c| c.len()).sum();
+        let sum_sizes: usize = clusters.get_sets().map(|c| c.len()).sum();
         assert_eq!(sum_sizes, l * l);
     }
 }

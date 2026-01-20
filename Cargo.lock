@@ -274,7 +274,6 @@ dependencies = [
  "rand",
  "rand_chacha",
  "rayon",
- "union-find-rs",
 ]
 
 [[package]]
@@ -288,12 +287,6 @@ name = "unindent"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7264e107f553ccae879d21fbea1d6724ac785e8c3bfc762137959b5802826ef3"
-
-[[package]]
-name = "union-find-rs"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d7cf5ae6c8635588ab0aa0ddd0ba68b7586c96cd00f8d12337071219f9c885f"
 
 [[package]]
 name = "wasip2"

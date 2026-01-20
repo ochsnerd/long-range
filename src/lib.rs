@@ -1,4 +1,5 @@
 mod norms;
+mod union_find;
 mod percolation;
 
 #[pyo3::pymodule]
